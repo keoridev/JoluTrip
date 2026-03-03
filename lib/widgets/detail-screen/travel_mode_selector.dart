@@ -122,7 +122,10 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
                         ? 0
                         : AppDimens.spaceS,
                   ),
-                  child: GuideCardWidget(guide: widget.guides[index]),
+                  child: GuideCardWidget(
+                    guide: widget.guides[index],
+                    location: widget.location,
+                  ),
                 );
               },
             ),

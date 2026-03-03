@@ -6,6 +6,7 @@ class GuidesModel {
   final int priceService;
   final int whatsapp;
   final double rating;
+  final String helloVideo;
 
   GuidesModel(
       {required this.name,
@@ -14,7 +15,8 @@ class GuidesModel {
       required this.carPhoto,
       required this.priceService,
       required this.whatsapp,
-      required this.rating});
+      required this.rating,
+      required this.helloVideo});
 
   factory GuidesModel.fromFirestore(String docId, Map<String, dynamic> data) {
     String asString(dynamic v, String defaultValue) {
@@ -38,13 +40,14 @@ class GuidesModel {
     }
 
     return GuidesModel(
-      name: asString(data['name'], 'Без имени'),
-      avatarUrl: asString(data['avatar_url'], 'assets/images/default-user.jpg'),
-      car: asString(data['car_name'], 'не указано'),
-      carPhoto: asString(data['car_url'], ''),
-      priceService: asInt(data['price_service'], 0),
-      whatsapp: asInt(data['whatsapp'], 0),
-      rating: asDouble(data['rating'], 0.0),
-    );
+        name: asString(data['name'], 'Без имени'),
+        avatarUrl:
+            asString(data['avatar_url'], 'assets/images/default-user.jpg'),
+        car: asString(data['car_name'], 'не указано'),
+        carPhoto: asString(data['car_url'], ''),
+        priceService: asInt(data['price_service'], 0),
+        whatsapp: asInt(data['whatsapp'], 0),
+        rating: asDouble(data['rating'], 0.0),
+        helloVideo: asString(data['hello_video'], 'Гид не загружал видео '));
   }
 }
