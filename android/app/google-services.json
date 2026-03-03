@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "688773005235",
+    "project_id": "jolu-trip-d529a",
+    "storage_bucket": "jolu-trip-d529a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:688773005235:android:95f540934b171313ab15c6",
+        "android_client_info": {
+          "package_name": "com.example.jolu_trip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyn3R_KIhlKqes4Zg58w9_Wsz0CHDsh_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

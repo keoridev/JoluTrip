@@ -53,4 +53,6 @@ class AppTextStyles {
     fontSize: 11,
     fontWeight: FontWeight.w500,
   );
+
+  static get titleLarge => null;
 }
