@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:jolu_trip/data/models/coordinates.model.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
@@ -91,37 +90,58 @@ class LocationInfoCard extends StatelessWidget {
 // ==================== КНОПКИ УПРАВЛЕНИЯ ====================
 class MapControls extends StatelessWidget {
   final bool isDark;
-  final VoidCallback onOpenMaps;
+  final VoidCallback onOpen2GIS;
   final VoidCallback onFullscreen;
+  final VoidCallback onOpenMaps;
 
   const MapControls({
     super.key,
     required this.isDark,
-    required this.onOpenMaps,
+    required this.onOpen2GIS,
     required this.onFullscreen,
+    required this.onOpenMaps,
   });
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        // Кнопка Google Maps
         Positioned(
           bottom: AppDimens.spaceM,
           right: AppDimens.spaceM,
           child: FloatingActionButton.small(
-            heroTag: 'osm_open',
+            heroTag: 'google_maps',
             onPressed: onOpenMaps,
             backgroundColor: isDark ? Colors.grey[900] : Colors.white,
             child: Icon(
-              Icons.open_in_new,
-              color: AppColors.primary,
+              Icons.map,
+              color: Colors.blue,
               size: AppDimens.iconSizeS,
             ),
           ),
         ),
+
+        // Кнопка 2ГИС
         Positioned(
           bottom: AppDimens.spaceM,
           right: AppDimens.spaceM + 56,
+          child: FloatingActionButton.small(
+            heroTag: '2gis',
+            onPressed: onOpen2GIS,
+            backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+            child: Icon(
+              Icons.map,
+              color: Colors.orange,
+              size: AppDimens.iconSizeS,
+            ),
+          ),
+        ),
+
+        // Кнопка полноэкранного режима
+        Positioned(
+          bottom: AppDimens.spaceM,
+          right: AppDimens.spaceM + 112,
           child: FloatingActionButton.small(
             heroTag: 'osm_fullscreen',
             onPressed: onFullscreen,
@@ -143,14 +163,16 @@ class LocationInfoBottomSheet extends StatelessWidget {
   final String locationName;
   final Coordinates coordinates;
   final bool isDark;
-  final VoidCallback onOpenMaps;
+  final VoidCallback onOpenGoogleMaps;
+  final VoidCallback onOpen2GIS;
 
   const LocationInfoBottomSheet({
     super.key,
     required this.locationName,
     required this.coordinates,
     required this.isDark,
-    required this.onOpenMaps,
+    required this.onOpenGoogleMaps,
+    required this.onOpen2GIS,
   });
 
   @override
@@ -182,30 +204,54 @@ class LocationInfoBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppDimens.spaceL),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onOpenMaps,
-                  icon: const Icon(Icons.map),
-                  label: const Text("Открыть в Maps"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppDimens.spaceS),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                  label: const Text("Закрыть"),
-                ),
-              ),
-            ],
+
+          // Кнопки для разных карт
+          _buildMapButton(
+            icon: Icons.map,
+            label: "Открыть в Google Maps",
+            color: Colors.blue,
+            onPressed: onOpenGoogleMaps,
+          ),
+          const SizedBox(height: AppDimens.spaceS),
+
+          _buildMapButton(
+            icon: Icons.map,
+            label: "Открыть в 2ГИС",
+            color: Colors.orange,
+            onPressed: onOpen2GIS,
+          ),
+          const SizedBox(height: AppDimens.spaceS),
+
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close),
+              label: const Text("Закрыть"),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMapButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
       ),
     );
   }

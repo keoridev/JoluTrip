@@ -41,7 +41,6 @@ class _GuideVideoScreenState extends State<GuideVideoScreen> {
         });
         _controller.play();
 
-        // Показываем кнопку через 3 секунды
         Future.delayed(const Duration(seconds: 3), () {
           if (mounted) {
             setState(() {
@@ -240,25 +239,6 @@ class _GuideVideoScreenState extends State<GuideVideoScreen> {
                                 BorderRadius.circular(AppDimens.radiusL),
                           ),
                         ),
-                      ),
-                    ),
-
-                    SizedBox(height: AppDimens.spaceS),
-
-                    // Предпросмотр сообщения
-                    Container(
-                      padding: EdgeInsets.all(AppDimens.spaceS),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppDimens.radiusM),
-                      ),
-                      child: Text(
-                        '«${widget.guide.name}, привет! Видел твое видео в Jolu Trip, хочу с тобой в ${widget.location.name}!»',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: Colors.white70,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ],

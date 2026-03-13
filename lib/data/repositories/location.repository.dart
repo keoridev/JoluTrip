@@ -5,17 +5,29 @@ import 'package:jolu_trip/data/models/location_model.dart';
 class LocationRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Получить все локации
   Stream<List<LocationModel>> getLocations() {
-    return _firestore.collection('locations').snapshots().map((snapshot) =>
-        snapshot
-            .docs
-            .map((doc) => LocationModel.fromFirestore(
-                doc.id, doc.data() as Map<String, dynamic>))
-            .toList());
+    return _firestore.collection('locations').snapshots().map((snapshot) {
+      return snapshot.docs
+          .where((doc) {
+            final data = doc.data();
+
+            return data.isNotEmpty &&
+                data['video_url'] != null &&
+                data['video_url'].toString().isNotEmpty;
+          })
+          .map((doc) {
+            try {
+              return LocationModel.fromFirestore(doc.id, doc.data());
+            } catch (e) {
+              debugPrint('⚠️ Пропускаем документ ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<LocationModel>()
+          .toList();
+    });
   }
 
-  // Получить одну локацию по ID
   Future<LocationModel?> getLocationById(String locationId) async {
     try {
       final doc =

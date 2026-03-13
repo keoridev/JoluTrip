@@ -4,16 +4,16 @@ import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
 import 'package:jolu_trip/data/models/guides_model.dart';
 import 'package:jolu_trip/data/models/location_model.dart';
-import 'package:jolu_trip/widgets/guide/guide_video.dart'; // Добавить импорт
+import 'package:jolu_trip/widgets/guide/guide_video.dart';
 
 class GuideCardWidget extends StatelessWidget {
   final GuidesModel guide;
-  final LocationModel location; // Добавить поле location
+  final LocationModel location;
 
   const GuideCardWidget({
     super.key,
     required this.guide,
-    required this.location, // Добавить required
+    required this.location,
   });
 
   @override
@@ -22,7 +22,6 @@ class GuideCardWidget extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        // Открываем видео гида при нажатии на карточку
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -65,7 +64,6 @@ class GuideCardWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // Аватар и имя гида
               Row(
                 children: [
                   ClipOval(
@@ -111,10 +109,7 @@ class GuideCardWidget extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: AppDimens.spaceS),
-
-              // Рейтинг и цена
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

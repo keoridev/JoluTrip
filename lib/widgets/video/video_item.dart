@@ -9,6 +9,7 @@ import 'package:jolu_trip/widgets/video/video_placeholder.dart';
 import 'package:jolu_trip/widgets/video/video_overlay.dart';
 import 'package:jolu_trip/widgets/video/video_indicators.dart';
 import 'package:video_player/video_player.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class VideoItem extends StatefulWidget {
   final String id;
@@ -56,6 +57,8 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     _initializeVideo();
   }
 
@@ -82,6 +85,30 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
     });
   }
 
+  @override
+  void didUpdateWidget(VideoItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.url != widget.url) {
+      _reloadVideo();
+    }
+  }
+
+  Future<void> _reloadVideo() async {
+    await _controller?.dispose();
+    _controller = null;
+
+    if (mounted) {
+      setState(() {
+        _isInitialized = false;
+        _hasError = false;
+        _isPlaying = true;
+      });
+    }
+
+    await _initializeVideo();
+  }
+
   Future<void> _initializeVideo() async {
     if (widget.url.isEmpty) {
       if (mounted) setState(() => _hasError = true);
@@ -91,7 +118,6 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
     try {
       final controller = await _videoService.createController(widget.url);
 
-      // Добавляем слушатель для определения буферизации
       controller.addListener(() {
         if (mounted) {
           setState(() {
@@ -137,7 +163,6 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
       }
     });
 
-    // Скрываем иконку через 1 секунду
     _hideIconTimer?.cancel();
     _hideIconTimer = Timer(const Duration(seconds: 1), () {
       if (mounted) setState(() => _showIcon = false);
@@ -207,64 +232,81 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
       );
     }
 
-    return GestureDetector(
-      onTap: _togglePlayPause,
-      onLongPressStart: _onLongPressStart,
-      onLongPressEnd: _onLongPressEnd,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (!_isInitialized)
-            VideoPlaceholder(thumbnailUrl: widget.thumbnailUrl)
-          else
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _controller!.value.size.width,
-                height: _controller!.value.size.height,
-                child: VideoPlayer(_controller!),
-              ),
-            ),
+    return VisibilityDetector(
+        key: Key('video_${widget.id}'),
+        onVisibilityChanged: (visibilityInfo) {
+          if (visibilityInfo.visibleFraction == 0 && mounted) {
+            if (_controller != null && _controller!.value.isPlaying) {
+              _controller!.pause();
+              setState(() {
+                _isPlaying = false;
+                _showIcon = true;
+              });
+            }
+          }
+        },
+        child: GestureDetector(
+          onTap: _togglePlayPause,
+          onLongPressStart: _onLongPressStart,
+          onLongPressEnd: _onLongPressEnd,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!_isInitialized)
+                VideoPlaceholder(thumbnailUrl: widget.thumbnailUrl)
+              else
+                FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
+                  ),
+                ),
 
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 300,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Colors.black87, Colors.black54, Colors.transparent],
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 300,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black87,
+                        Colors.black54,
+                        Colors.transparent
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // Оверлей с информацией
-          VideoOverlay(
-            id: widget.id,
-            title: widget.title,
-            category: widget.category,
-            price: widget.price,
-            travelTime: widget.travelTime,
-            carType: widget.carType,
-            difficult: widget.difficult,
-          ),
+              // Оверлей с информацией
+              VideoOverlay(
+                id: widget.id,
+                title: widget.title,
+                category: widget.category,
+                price: widget.price,
+                travelTime: widget.travelTime,
+                carType: widget.carType,
+                difficult: widget.difficult,
+              ),
 
-          // Индикаторы
-          PlayPauseIcon(
-            isVisible: _showIcon,
-            isPlaying: _isPlaying,
+              // Индикаторы
+              PlayPauseIcon(
+                isVisible: _showIcon,
+                isPlaying: _isPlaying,
+              ),
+              SpeedIndicator(
+                speed: _playbackSpeed,
+                isVisible: _isSpeedIndicatorVisible,
+              ),
+              BufferingIndicator(isVisible: _isBuffering),
+            ],
           ),
-          SpeedIndicator(
-            speed: _playbackSpeed,
-            isVisible: _isSpeedIndicatorVisible,
-          ),
-          BufferingIndicator(isVisible: _isBuffering),
-        ],
-      ),
-    );
+        ));
   }
 }

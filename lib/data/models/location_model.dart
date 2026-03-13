@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/coordinates.model.dart';
 
 class LocationModel {
@@ -10,7 +11,7 @@ class LocationModel {
   final int travelTime;
   final String difficult;
   final bool hasSignal;
-  final int entryFee;
+  final String entryFee;
   final String category;
   final String thumbnailUrl;
   final List<String> availableGuides;
@@ -42,6 +43,11 @@ class LocationModel {
   });
 
   factory LocationModel.fromFirestore(String docId, Map<String, dynamic> data) {
+    debugPrint('📍 Парсим документ: $docId');
+    debugPrint('📦 Данные: $data');
+
+    // Особенно важно для Конорчека:
+
     String asString(dynamic v, String defaultValue) {
       if (v == null) return defaultValue;
       return v.toString().isEmpty ? defaultValue : v.toString();
@@ -83,22 +89,30 @@ class LocationModel {
     }
 
     String validateUrl(String url) {
-      if (url.isEmpty) return '';
+      if (url == null) return '';
 
-      if(!url.startsWith('http://') && !url.startsWith('https://')) {
-        return '';
+      // Просто обрезаем пробелы и возвращаем как есть
+      String cleanUrl = url.toString().trim();
+
+      if (cleanUrl.isEmpty) return '';
+
+      // Если нет протокола, добавляем https://
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://$cleanUrl';
       }
 
-      return url;
+      return cleanUrl;
     }
 
     return LocationModel(
       id: docId,
       name: asString(data['name'], 'Без названия'),
       description: asString(data['description'], 'Без описания'),
-      videoUrl: asString(data['video_url'], ''),
+      videoUrl: validateUrl(
+        data['video_url'],
+      ),
       price: asInt(data['price_per_car'], 8000),
-      entryFee: asInt(data['entry_fee'], 0),
+      entryFee: asString(data['entry_fee'], '0'),
       carType: asString(data['car_type_required'], '4x4'),
       travelTime: asInt(data['travel_time'], 0),
       difficult: asString(data['difficulty'], 'нормально'),

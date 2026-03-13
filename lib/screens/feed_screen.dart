@@ -1,14 +1,72 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/location_model.dart';
+import 'package:jolu_trip/data/repositories/location.repository.dart';
 import 'package:jolu_trip/widgets/video/video_item.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
 
-class FeedScreen extends StatelessWidget {
+class FeedScreen extends StatefulWidget {
   final VoidCallback? onThemeToggle;
-  const FeedScreen({super.key, this.onThemeToggle});
+  final String? initialLocationId;
+  const FeedScreen({super.key, this.onThemeToggle, this.initialLocationId});
+
+  @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  final PageController _pageController = PageController();
+  final _locationRepo = LocationRepository();
+  List<LocationModel> _locations = [];
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocations();
+  }
+
+  Future<void> _loadLocations() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('locations').get();
+
+      final locations = snapshot.docs.map((doc) {
+        return LocationModel.fromFirestore(
+          doc.id,
+          doc.data() as Map<String, dynamic>,
+        );
+      }).toList();
+
+      setState(() {
+        _locations = locations;
+        _isInitialized = true;
+      });
+
+      // Если есть initialLocationId, прокручиваем к нему
+      if (widget.initialLocationId != null && locations.isNotEmpty) {
+        _scrollToLocation();
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки локаций: $e');
+    }
+  }
+
+  void _scrollToLocation() {
+    final index = _locations
+        .indexWhere((location) => location.id == widget.initialLocationId);
+
+    if (index != -1) {
+      // Небольшая задержка для завершения сборки
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(index);
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,26 +79,24 @@ class FeedScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          if (onThemeToggle != null)
+          if (widget.onThemeToggle != null)
             IconButton(
               icon: Icon(
                 isDark ? Icons.light_mode : Icons.dark_mode,
                 color: isDark ? Colors.white : Colors.black,
               ),
-              onPressed: onThemeToggle,
+              onPressed: widget.onThemeToggle,
               tooltip: 'Переключить тему',
             ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('locations').snapshots(),
+      body: StreamBuilder<List<LocationModel>>(
+        stream: _locationRepo.getLocations(),
         builder: (context, snapshot) {
-          // Обработка ошибок с красивым UI
           if (snapshot.hasError) {
-            final e = snapshot.error;
-            final msg = e.toString().contains('PERMISSION_DENIED')
+            final msg = snapshot.error.toString().contains('PERMISSION_DENIED')
                 ? 'Нет доступа к Firestore. Проверьте правила доступа.'
-                : 'Ошибка загрузки: ${e.toString()}';
+                : 'Ошибка загрузки: ${snapshot.error}';
 
             return Center(
               child: Padding(
@@ -48,21 +104,16 @@ class FeedScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: AppColors.error,
-                      size: AppDimens.iconSizeL * 2,
-                    ),
+                    Icon(Icons.error_outline,
+                        color: AppColors.error, size: AppDimens.iconSizeL * 2),
                     const SizedBox(height: AppDimens.spaceM),
-                    Text(
-                      msg,
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: isDark
-                            ? AppColors.textSecondaryDark
-                            : AppColors.textSecondaryLight,
-                      ),
-                    ),
+                    Text(msg,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
+                        )),
                   ],
                 ),
               ),
@@ -80,48 +131,38 @@ class FeedScreen extends StatelessWidget {
             );
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.video_library_outlined,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                    size: AppDimens.iconSizeL * 2,
-                  ),
-                  const SizedBox(height: AppDimens.spaceM),
-                  Text(
-                    'Нет доступных видео',
-                    style: AppTextStyles.headlineMedium.copyWith(
+                  Icon(Icons.video_library_outlined,
                       color: isDark
                           ? AppColors.textSecondaryDark
                           : AppColors.textSecondaryLight,
-                    ),
-                  ),
+                      size: AppDimens.iconSizeL * 2),
+                  const SizedBox(height: AppDimens.spaceM),
+                  Text('Нет доступных видео',
+                      style: AppTextStyles.headlineMedium.copyWith(
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondaryLight,
+                      )),
                 ],
               ),
             );
           }
 
-          final docs = snapshot.data!.docs;
+          final locations = snapshot.data!;
 
           return PageView.builder(
             scrollDirection: Axis.vertical,
-            itemCount: docs.length,
+            itemCount: locations.length,
             itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data();
-              if (data == null) return const SizedBox.shrink();
-
-              final location = LocationModel.fromFirestore(
-                doc.id,
-                Map<String, dynamic>.from(data as Map),
-              );
+              final location = locations[index];
               return VideoItem(
-                id: doc.id,
+                key: ValueKey(location.id),
+                id: location.id,
                 url: location.videoUrl,
                 title: location.name,
                 category: location.category,

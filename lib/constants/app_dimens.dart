@@ -30,7 +30,7 @@ class AppDimens {
   static const double iconSizeM = 24.0;
   static const double iconSizeL = 32.0;
 
-  // Высота кнопок (сделаем их мощнее для удобства нажатия в пути)
+  // Высота кнопок
   static const double buttonHeightM = 52.0;
   static const double buttonHeightL = 60.0; // Основная кнопка "WhatsApp"
 

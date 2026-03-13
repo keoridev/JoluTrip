@@ -71,7 +71,6 @@ class VideoOverlay extends StatelessWidget {
 
           const SizedBox(height: AppDimens.spaceS),
 
-          // Характеристики
           Wrap(
             runSpacing: AppDimens.spaceS,
             spacing: AppDimens.spaceS,
@@ -98,26 +97,6 @@ class VideoOverlay extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'от',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondaryDark,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    '$price сом',
-                    style: AppTextStyles.headlineMedium.copyWith(
-                      color: AppColors.textPrimaryDark,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

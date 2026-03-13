@@ -4,7 +4,6 @@ import 'package:jolu_trip/screens/fullscreen_map_screen.dart';
 import 'package:jolu_trip/utils/map_utils.dart';
 import 'package:jolu_trip/widgets/detail-screen/map/map_components.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:jolu_trip/data/models/coordinates.model.dart';
 
 import 'package:jolu_trip/constants/app_dimens.dart';
@@ -75,7 +74,6 @@ class _LocationMapState extends State<LocationMap> {
               ],
             ),
 
-            // Информационная карточка сверху
             Positioned(
               top: AppDimens.spaceM,
               left: AppDimens.spaceM,
@@ -89,8 +87,9 @@ class _LocationMapState extends State<LocationMap> {
 
             // Кнопки управления
             MapControls(
-              isDark: widget.isDark,
               onOpenMaps: _openInGoogleMaps,
+              isDark: widget.isDark,
+              onOpen2GIS: _openIn2GIS,
               onFullscreen: () => _openFullscreenMap(context),
             ),
           ],
@@ -119,6 +118,14 @@ class _LocationMapState extends State<LocationMap> {
     );
   }
 
+  Future<void> _openIn2GIS() async {
+    await MapUtils.openIn2GISWeb(
+      latitude: widget.coordinates.latitude,
+      longitude: widget.coordinates.longitude,
+      placeName: widget.locationName,
+    );
+  }
+
   void _showPlaceInfo(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -127,7 +134,8 @@ class _LocationMapState extends State<LocationMap> {
         locationName: widget.locationName,
         coordinates: widget.coordinates,
         isDark: widget.isDark,
-        onOpenMaps: _openInGoogleMaps,
+        onOpenGoogleMaps: _openInGoogleMaps,
+        onOpen2GIS: _openIn2GIS,
       ),
     );
   }

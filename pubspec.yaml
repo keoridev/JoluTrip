@@ -30,6 +30,7 @@ dependencies:
   video_player: ^2.10.1
   chewie: ^1.13.0
   visibility_detector: ^0.4.0+2
+  
 
   go_router: ^14.6.2
   flutter_riverpod: ^2.6.1

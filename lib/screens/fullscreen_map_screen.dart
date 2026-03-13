@@ -7,6 +7,7 @@ import 'package:jolu_trip/data/models/coordinates.model.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/utils/map_utils.dart'; // Добавляем импорт MapUtils
 
 class FullscreenMapScreen extends StatelessWidget {
   final Coordinates coordinates;
@@ -22,9 +23,9 @@ class FullscreenMapScreen extends StatelessWidget {
 
   LatLng get _point => LatLng(coordinates.latitude, coordinates.longitude);
 
-  String get _tileUrl => isDark
-      ? 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  // Используем MapUtils для получения URL тайлов
+  String get _tileUrl => MapUtils.getTileUrl(isDark);
+  List<String> get _subdomains => MapUtils.getSubdomains(isDark);
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +34,38 @@ class FullscreenMapScreen extends StatelessWidget {
         title: Text(locationName, style: AppTextStyles.bodyLarge),
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_new),
-            onPressed: _openInGoogleMaps,
-            tooltip: "Открыть в Google Maps",
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.map),
+            tooltip: "Выбрать карту",
+            onSelected: (value) {
+              if (value == 'google') {
+                _openInGoogleMaps();
+              } else if (value == '2gis') {
+                _openIn2GIS();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'google',
+                child: Row(
+                  children: [
+                    Icon(Icons.map, color: Colors.blue, size: 20),
+                    SizedBox(width: 8),
+                    Text('Google Maps'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: '2gis',
+                child: Row(
+                  children: [
+                    Icon(Icons.map, color: Colors.orange, size: 20),
+                    SizedBox(width: 8),
+                    Text('2ГИС'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -48,7 +77,7 @@ class FullscreenMapScreen extends StatelessWidget {
         children: [
           TileLayer(
             urlTemplate: _tileUrl,
-            subdomains: isDark ? [] : ['a', 'b', 'c'],
+            subdomains: _subdomains,
             userAgentPackageName: 'com.example.jolu_trip',
           ),
           MarkerLayer(
@@ -62,7 +91,7 @@ class FullscreenMapScreen extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openInGoogleMapsDirections,
+        onPressed: () => _showRouteOptions(context),
         icon: const Icon(Icons.directions_car),
         label: const Text("Построить маршрут"),
         backgroundColor: AppColors.primary,
@@ -70,24 +99,122 @@ class FullscreenMapScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _openInGoogleMaps() async {
-    final uri = Uri.parse(
-      "https://www.google.com/maps/search/?api=1"
-      "&query=${coordinates.latitude},${coordinates.longitude}",
+  void _showRouteOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(AppDimens.spaceL),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppDimens.radiusL),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Построить маршрут',
+              style: AppTextStyles.headlineMedium.copyWith(
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: AppDimens.spaceM),
+
+            // Google Maps
+            _buildRouteButton(
+              icon: Icons.map,
+              label: 'Google Maps',
+              color: Colors.blue,
+              onPressed: () {
+                Navigator.pop(context);
+                _openInGoogleMapsDirections();
+              },
+            ),
+            const SizedBox(height: AppDimens.spaceS),
+
+            // 2ГИС
+            _buildRouteButton(
+              icon: Icons.map,
+              label: '2ГИС',
+              color: Colors.orange,
+              onPressed: () {
+                Navigator.pop(context);
+                _openIn2GISDirections();
+              },
+            ),
+            const SizedBox(height: AppDimens.spaceS),
+
+            // Отмена
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                label: const Text("Отмена"),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
 
-  Future<void> _openInGoogleMapsDirections() async {
-    final uri = Uri.parse(
-      "https://www.google.com/maps/dir/?api=1"
-      "&destination=${coordinates.latitude},${coordinates.longitude}",
+  Widget _buildRouteButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  }
+
+  // Открыть в Google Maps (просмотр)
+  Future<void> _openInGoogleMaps() async {
+    await MapUtils.openInGoogleMaps(
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+    );
+  }
+
+  // Открыть в Google Maps (маршрут)
+  Future<void> _openInGoogleMapsDirections() async {
+    await MapUtils.buildRouteIn2GIS(
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+    );
+  }
+
+  // Открыть в 2ГИС (просмотр)
+  Future<void> _openIn2GIS() async {
+    await MapUtils.openIn2GISWeb(
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      placeName: locationName,
+    );
+  }
+
+  // Открыть в 2ГИС (маршрут)
+  Future<void> _openIn2GISDirections() async {
+    await MapUtils.buildRouteIn2GIS(
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      placeName: locationName,
+    );
   }
 
   void _showPlaceInfo(BuildContext context) {
@@ -121,31 +248,84 @@ class FullscreenMapScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppDimens.spaceL),
+
+            // Кнопки для разных карт
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _openInGoogleMapsDirections,
-                    icon: const Icon(Icons.directions_car),
-                    label: const Text("Маршрут"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
+                  child: _buildActionButton(
+                    icon: Icons.map,
+                    label: "Google",
+                    color: Colors.blue,
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openInGoogleMaps();
+                    },
                   ),
                 ),
                 const SizedBox(width: AppDimens.spaceS),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    label: const Text("Закрыть"),
+                  child: _buildActionButton(
+                    icon: Icons.map,
+                    label: "2ГИС",
+                    color: Colors.orange,
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openIn2GIS();
+                    },
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: AppDimens.spaceS),
+
+            // Кнопка маршрута
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showRouteOptions(context);
+                },
+                icon: const Icon(Icons.directions_car),
+                label: const Text("Построить маршрут"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppDimens.spaceS),
+
+            // Кнопка закрытия
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                label: const Text("Закрыть"),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 10),
       ),
     );
   }

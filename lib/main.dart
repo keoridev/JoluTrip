@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/firebase_options.dart';
+import 'package:jolu_trip/screens/category-screen.dart';
 import 'package:jolu_trip/screens/feed_screen.dart';
+import 'package:jolu_trip/screens/main-screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,22 +19,6 @@ void main() async {
     persistenceEnabled: true,
   );
   runApp(const App());
-
-  await migrateLocations();
-}
-
-Future<void> migrateLocations() async {
-  final oldCollection = FirebaseFirestore.instance.collection('locatons');
-
-  final newCollection = FirebaseFirestore.instance.collection('locations');
-
-  final snapshot = await oldCollection.get();
-
-  for (var doc in snapshot.docs) {
-    await newCollection.doc(doc.id).set(doc.data());
-  }
-
-  print('Migration completed');
 }
 
 class App extends StatefulWidget {
@@ -44,15 +30,6 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   ThemeMode _themeMode = ThemeMode.dark;
-  void _toggleTheme() {
-    setState(() {
-      if (_themeMode == ThemeMode.light) {
-        _themeMode = ThemeMode.dark;
-      } else {
-        _themeMode = ThemeMode.light;
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +41,21 @@ class _AppState extends State<App> {
       debugShowCheckedModeBanner: false,
       themeAnimationCurve: Curves.easeInOut,
       themeAnimationDuration: const Duration(milliseconds: 500),
-      home: FeedScreen(
-        onThemeToggle: _toggleTheme,
-      ),
+      initialRoute: '/',
       routes: {
-        // '/detail-screen': (context) => DetailsScreen(locationId: location.id)
+        '/': (context) => const MainScreen(),
+        '/search': (context) => const SearchScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/video-feed') {
+          final locationId = settings.arguments as String?;
+          return MaterialPageRoute(
+            builder: (context) => FeedScreen(
+              initialLocationId: locationId,
+            ),
+          );
+        }
+        return null;
       },
     );
   }
