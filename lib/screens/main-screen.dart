@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
+import 'package:jolu_trip/screens/auth/login-screen.dart';
 import 'package:jolu_trip/screens/category-screen.dart';
 import 'package:jolu_trip/screens/feed_screen.dart';
+import 'package:jolu_trip/screens/profile-screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -28,9 +30,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     FeedScreen(),
     SearchScreen(),
-    const Center(
-      child: Text('Избранные'),
-    ),
+    AuthScreen(),
     const Center(
       child: Text('Профиль'),
     )

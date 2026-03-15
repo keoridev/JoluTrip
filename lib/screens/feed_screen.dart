@@ -75,21 +75,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          if (widget.onThemeToggle != null)
-            IconButton(
-              icon: Icon(
-                isDark ? Icons.light_mode : Icons.dark_mode,
-                color: isDark ? Colors.white : Colors.black,
-              ),
-              onPressed: widget.onThemeToggle,
-              tooltip: 'Переключить тему',
-            ),
-        ],
-      ),
       body: StreamBuilder<List<LocationModel>>(
         stream: _locationRepo.getLocations(),
         builder: (context, snapshot) {

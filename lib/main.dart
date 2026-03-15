@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/firebase_options.dart';
+import 'package:jolu_trip/screens/auth/login-screen.dart';
+
 import 'package:jolu_trip/screens/category-screen.dart';
 import 'package:jolu_trip/screens/feed_screen.dart';
 import 'package:jolu_trip/screens/main-screen.dart';
@@ -45,6 +47,7 @@ class _AppState extends State<App> {
       routes: {
         '/': (context) => const MainScreen(),
         '/search': (context) => const SearchScreen(),
+        '/login': (context) => AuthScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/video-feed') {
