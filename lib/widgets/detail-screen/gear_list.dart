@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class GearList extends StatelessWidget {
   final List<String> gearList;
@@ -19,11 +20,12 @@ class GearList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Что взять с собой",
+          l10n.whatToTake,
           style: AppTextStyles.headlineMedium.copyWith(
             color: textSecondary,
           ),

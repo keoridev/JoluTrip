@@ -1,148 +1,220 @@
 import 'package:flutter/material.dart';
-import 'package:jolu_trip/screens/main-screen.dart';
-import 'package:jolu_trip/services/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jolu_trip/constants/app_colors.dart';
+import 'package:jolu_trip/constants/app_dimens.dart';
+import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/providers/auth_provider.dart';
+import 'package:jolu_trip/widgets/auth/auth_button.dart';
+import 'package:jolu_trip/widgets/auth/auth_field.dart';
+import 'package:jolu_trip/widgets/auth/auth_header.dart';
+import 'package:jolu_trip/widgets/auth/auth_toggle.dart';
+import 'package:jolu_trip/widgets/auth/social_button.dart';
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen>
+class _AuthScreenState extends ConsumerState<AuthScreen>
     with SingleTickerProviderStateMixin {
-  final AuthService _authService = AuthService();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  late final AnimationController _animationController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _formAnimation;
 
-  bool _isLoading = false;
+  // Form state
   bool _isLogin = true;
   String? _errorMessage;
+  bool _obscurePassword = true;
+  bool _isLoading = false;
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  // Controllers
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+
+  // Focus nodes
+  final FocusNode emailFocus = FocusNode();
+  final FocusNode passwordFocus = FocusNode();
+  final FocusNode nameFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+    _animationController.forward();
+  }
 
+  void _setupAnimations() {
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
       ),
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.3, 0.8, curve: Curves.easeOutCubic),
+        curve: const Interval(0.2, 0.6, curve: Curves.easeOutCubic),
       ),
     );
 
-    _animationController.forward();
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.elasticOut,
+      ),
+    );
 
-    _authService.authStateChanges.listen((user) {
-      if (user != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      }
-    });
+    _formAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
   }
 
-  Future<void> _submitEmailPassword() async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
-      setState(() {
-        _errorMessage = 'Заполните все поля';
-      });
-      return;
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args.containsKey('mode')) {
+      final mode = args['mode'];
+      if (mode == 'register' && _isLogin) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _toggleMode();
+        });
+      }
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_validateInputs()) return;
+
+    setState(() => _isLoading = true);
+    setState(() => _errorMessage = null);
 
     try {
       if (_isLogin) {
-        // Вход
-        await _authService.signInWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
+        await ref.read(signInWithEmailProvider(
+                (emailController.text.trim(), passwordController.text.trim()))
+            .future);
       } else {
-        // Регистрация
-        await _authService.signUpWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-        // Если есть имя, можно обновить профиль
-        if (_nameController.text.trim().isNotEmpty) {
-          await _authService.updateProfile(
-            displayName: _nameController.text.trim(),
-          );
+        await ref.read(signUpWithEmailProvider(
+                (emailController.text.trim(), passwordController.text.trim()))
+            .future);
+        // Update profile if name provided
+        if (nameController.text.trim().isNotEmpty) {
+          // Note: Profile update would need a separate provider, for now just sign up
         }
       }
+      if (mounted) _navigateToProfile();
     } catch (e) {
-      setState(() {
-        _errorMessage = _isLogin
-            ? 'Ошибка входа: ${e.toString()}'
-            : 'Ошибка регистрации: ${e.toString()}';
-        _isLoading = false;
-      });
+      _handleAuthError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() => _isLoading = true);
+    setState(() => _errorMessage = null);
 
     try {
-      await _authService.signInWithGoogle();
+      await ref.read(signInWithGoogleProvider.future);
+      if (mounted) _navigateToProfile();
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Ошибка входа через Google: ${e.toString()}';
-        _isLoading = false;
-      });
+      setState(() => _errorMessage = 'Не удалось войти через Google');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _signInWithApple() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+  void _navigateToProfile() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/profile');
+      }
     });
+  }
 
-    try {
-      await _authService.signInWithApple();
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Ошибка входа через Apple: ${e.toString()}';
-        _isLoading = false;
-      });
+  void _toggleMode() {
+    _animationController.reset();
+    setState(() {
+      _isLogin = !_isLogin;
+      _errorMessage = null;
+      _clearControllers();
+    });
+    _animationController.forward();
+  }
+
+  void _clearControllers() {
+    emailController.clear();
+    passwordController.clear();
+    nameController.clear();
+  }
+
+  bool _validateInputs() {
+    if (emailController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Введите email');
+      return false;
     }
+    if (passwordController.text.length < 6) {
+      setState(() => _errorMessage = 'Пароль минимум 6 символов');
+      return false;
+    }
+    if (!_isLogin && nameController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Введите имя');
+      return false;
+    }
+    return true;
+  }
+
+  void _handleAuthError(dynamic e) {
+    final errorString = e.toString();
+    final errorMap = {
+      'user-not-found': 'Пользователь не найден',
+      'wrong-password': 'Неверный пароль',
+      'email-already-in-use': 'Email уже используется',
+      'weak-password': 'Слабый пароль',
+      'network-request-failed': 'Ошибка сети',
+      'invalid-email': 'Неверный email',
+      'user-disabled': 'Аккаунт заблокирован',
+      'too-many-requests': 'Слишком много попыток',
+    };
+
+    for (final entry in errorMap.entries) {
+      if (errorString.contains(entry.key)) {
+        setState(() => _errorMessage = entry.value);
+        return;
+      }
+    }
+    setState(
+        () => _errorMessage = _isLogin ? 'Ошибка входа' : 'Ошибка регистрации');
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    nameController.dispose();
+    emailFocus.dispose();
+    passwordFocus.dispose();
+    nameFocus.dispose();
     super.dispose();
   }
 
@@ -155,9 +227,9 @@ class _AuthScreenState extends State<AuthScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.blue.shade900,
-              Colors.blue.shade600,
-              Colors.blue.shade400,
+              Colors.grey.shade900,
+              Colors.black,
+              Colors.grey.shade900,
             ],
           ),
         ),
@@ -167,327 +239,104 @@ class _AuthScreenState extends State<AuthScreen>
             child: SlideTransition(
               position: _slideAnimation,
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: AppDimens.screenPadding,
                 child: Column(
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TweenAnimationBuilder(
-                            duration: const Duration(milliseconds: 1000),
-                            tween: Tween<double>(begin: 0, end: 1),
-                            curve: Curves.elasticOut,
-                            builder: (context, double value, child) {
-                              return Transform.scale(
-                                scale: value,
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.travel_explore,
-                                    size: 60,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Jolu Trip',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Путешествуй с комфортом',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white70,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
+                    AuthHeader(
+                      scaleAnimation: _scaleAnimation,
+                      formAnimation: _formAnimation,
                     ),
-
-                    // Форма входа/регистрации
                     Expanded(
                       flex: 3,
                       child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
                         child: Column(
                           children: [
-                            // Переключатель вход/регистрация
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _isLogin = true;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12),
-                                        decoration: BoxDecoration(
-                                          color: _isLogin
-                                              ? Colors.white
-                                              : Colors.transparent,
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                        ),
-                                        child: Text(
-                                          'Вход',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: _isLogin
-                                                ? Colors.blue.shade900
-                                                : Colors.white70,
-                                            fontWeight: _isLogin
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _isLogin = false;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12),
-                                        decoration: BoxDecoration(
-                                          color: !_isLogin
-                                              ? Colors.white
-                                              : Colors.transparent,
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                        ),
-                                        child: Text(
-                                          'Регистрация',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: !_isLogin
-                                                ? Colors.blue.shade900
-                                                : Colors.white70,
-                                            fontWeight: !_isLogin
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            AuthToggle(
+                              isLogin: _isLogin,
+                              onToggle: _toggleMode,
+                              formAnimation: _formAnimation,
                             ),
-
-                            const SizedBox(height: 24),
-
-                            // Сообщение об ошибке
+                            const SizedBox(height: AppDimens.spaceL),
                             if (_errorMessage != null)
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.red),
-                                ),
-                                child: Text(
-                                  _errorMessage!,
-                                  style: const TextStyle(color: Colors.red),
-                                  textAlign: TextAlign.center,
-                                ),
+                              _buildErrorWidget(_errorMessage!),
+                            if (!_isLogin) ...[
+                              AuthField(
+                                controller: nameController,
+                                focusNode: nameFocus,
+                                nextFocus: emailFocus,
+                                label: 'Имя',
+                                icon: Icons.person_outline,
+                                formAnimation: _formAnimation,
+                                isLoading: _isLoading,
                               ),
-
-                            // Поля ввода
-                            if (!_isLogin)
-                              TextField(
-                                controller: _nameController,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  labelText: 'Имя',
-                                  labelStyle:
-                                      const TextStyle(color: Colors.white70),
-                                  prefixIcon: const Icon(Icons.person,
-                                      color: Colors.white70),
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.1),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-
-                            if (!_isLogin) const SizedBox(height: 16),
-
-                            TextField(
-                              controller: _emailController,
-                              style: const TextStyle(color: Colors.white),
+                              const SizedBox(height: AppDimens.spaceM),
+                            ],
+                            AuthField(
+                              controller: emailController,
+                              focusNode: emailFocus,
+                              nextFocus: passwordFocus,
+                              label: 'Email',
+                              icon: Icons.email_outlined,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                labelStyle:
-                                    const TextStyle(color: Colors.white70),
-                                prefixIcon: const Icon(Icons.email,
-                                    color: Colors.white70),
-                                filled: true,
-                                fillColor: Colors.white.withOpacity(0.1),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
+                              formAnimation: _formAnimation,
+                              isLoading: _isLoading,
                             ),
-
-                            const SizedBox(height: 16),
-
-                            TextField(
-                              controller: _passwordController,
-                              style: const TextStyle(color: Colors.white),
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                labelText: 'Пароль',
-                                labelStyle:
-                                    const TextStyle(color: Colors.white70),
-                                prefixIcon: const Icon(Icons.lock,
-                                    color: Colors.white70),
-                                filled: true,
-                                fillColor: Colors.white.withOpacity(0.1),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
+                            const SizedBox(height: AppDimens.spaceM),
+                            AuthField(
+                              controller: passwordController,
+                              focusNode: passwordFocus,
+                              label: 'Пароль',
+                              icon: Icons.lock_outline,
+                              isPassword: true,
+                              obscureText: _obscurePassword,
+                              onToggleVisibility: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
+                              formAnimation: _formAnimation,
+                              isLoading: _isLoading,
+                              onSubmitted: _submit,
                             ),
-
-                            const SizedBox(height: 24),
-
-                            // Кнопка входа/регистрации
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: ElevatedButton(
-                                onPressed:
-                                    _isLoading ? null : _submitEmailPassword,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.blue.shade900,
-                                  elevation: 4,
-                                  shadowColor: Colors.black.withOpacity(0.3),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: _isLoading
-                                    ? const CircularProgressIndicator(
-                                        color: Colors.blue,
-                                      )
-                                    : Text(
-                                        _isLogin
-                                            ? 'Войти'
-                                            : 'Зарегистрироваться',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                              ),
+                            const SizedBox(height: AppDimens.spaceL),
+                            AuthButton(
+                              isLogin: _isLogin,
+                              isLoading: _isLoading,
+                              onPressed: _submit,
+                              formAnimation: _formAnimation,
                             ),
-
-                            const SizedBox(height: 24),
-
-                            // Разделитель
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: Text(
-                                    'или',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Социальные кнопки
+                            const SizedBox(height: AppDimens.spaceL),
+                            _buildDivider(),
+                            const SizedBox(height: AppDimens.spaceL),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                // Google
-                                _buildSocialButton(
-                                  icon: 'assets/images/google_logo.png',
+                                SocialButton(
+                                  icon: Icons.g_mobiledata,
                                   onPressed: _signInWithGoogle,
-                                  color: Colors.white,
+                                  label: 'Google',
+                                  formAnimation: _formAnimation,
                                 ),
-                                const SizedBox(width: 20),
-                                // Apple/iCloud
-                                _buildSocialButton(
+                                const SizedBox(width: AppDimens.spaceM),
+                                SocialButton(
                                   icon: Icons.apple,
-                                  onPressed: _signInWithApple,
-                                  color: Colors.black,
-                                  isIcon: true,
+                                  onPressed: () {},
+                                  label: 'Apple',
+                                  formAnimation: _formAnimation,
                                 ),
                               ],
                             ),
-
-                            const SizedBox(height: 24),
-
-                            // Дисклеймер
-                            Text(
-                              'Продолжая, вы соглашаетесь с условиями использования',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.5),
+                            const SizedBox(height: AppDimens.spaceXL),
+                            FadeTransition(
+                              opacity: _formAnimation,
+                              child: Text(
+                                'Продолжая, вы соглашаетесь с условиями использования',
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              textAlign: TextAlign.center,
                             ),
+                            const SizedBox(height: AppDimens.spaceM),
                           ],
                         ),
                       ),
@@ -502,49 +351,52 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
-  Widget _buildSocialButton({
-    dynamic icon,
-    required VoidCallback onPressed,
-    required Color color,
-    bool isIcon = false,
-  }) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(30),
+  Widget _buildErrorWidget(String message) {
+    return FadeTransition(
+      opacity: _formAnimation,
       child: Container(
-        width: 60,
-        height: 60,
+        padding: const EdgeInsets.all(AppDimens.spaceS),
+        margin: const EdgeInsets.only(bottom: AppDimens.spaceM),
         decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(AppDimens.radiusM),
+          border: Border.all(color: AppColors.error, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline,
+                color: AppColors.error, size: AppDimens.iconSizeS),
+            const SizedBox(width: AppDimens.spaceXS),
+            Expanded(
+              child: Text(
+                message,
+                style:
+                    AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+              ),
             ),
           ],
         ),
-        child: Center(
-          child: isIcon
-              ? Icon(
-                  icon,
-                  size: 30,
-                  color: color == Colors.black ? Colors.white : Colors.black87,
-                )
-              : Image.asset(
-                  icon,
-                  width: 30,
-                  height: 30,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.g_mobiledata,
-                      size: 30,
-                      color: Colors.black87,
-                    );
-                  },
-                ),
-        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return FadeTransition(
+      opacity: _formAnimation,
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppDimens.spaceM),
+            child: Text(
+              'или',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+        ],
       ),
     );
   }

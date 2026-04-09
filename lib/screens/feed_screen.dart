@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/location_model.dart';
 import 'package:jolu_trip/data/repositories/location.repository.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 import 'package:jolu_trip/widgets/video/video_item.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
@@ -20,7 +21,6 @@ class _FeedScreenState extends State<FeedScreen> {
   final PageController _pageController = PageController();
   final _locationRepo = LocationRepository();
   List<LocationModel> _locations = [];
-  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -36,13 +36,12 @@ class _FeedScreenState extends State<FeedScreen> {
       final locations = snapshot.docs.map((doc) {
         return LocationModel.fromFirestore(
           doc.id,
-          doc.data() as Map<String, dynamic>,
+          doc.data(),
         );
       }).toList();
 
       setState(() {
         _locations = locations;
-        _isInitialized = true;
       });
 
       // Если есть initialLocationId, прокручиваем к нему
@@ -78,10 +77,11 @@ class _FeedScreenState extends State<FeedScreen> {
       body: StreamBuilder<List<LocationModel>>(
         stream: _locationRepo.getLocations(),
         builder: (context, snapshot) {
+          final l10n = AppLocalizations.of(context)!;
           if (snapshot.hasError) {
             final msg = snapshot.error.toString().contains('PERMISSION_DENIED')
-                ? 'Нет доступа к Firestore. Проверьте правила доступа.'
-                : 'Ошибка загрузки: ${snapshot.error}';
+                ? l10n.noAccessFirestore
+                : '${l10n.loadingErrorPrefix} ${snapshot.error}';
 
             return Center(
               child: Padding(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class AppTextStyles {
-  
   static const TextStyle headlineLarge = TextStyle(
     fontSize: 32,
     fontWeight: FontWeight.w700,
@@ -17,7 +16,7 @@ class AppTextStyles {
   static const TextStyle locationTitle = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w700,
-    color: Colors.white, 
+    color: Colors.white,
     shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
   );
 
@@ -50,5 +49,27 @@ class AppTextStyles {
     fontWeight: FontWeight.w500,
   );
 
-  static get titleLarge => null;
+  static const TextStyle titleLarge = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+  );
+
+  static const TextStyle titleMedium = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+  );
+
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.4,
+  );
+
+  static const TextStyle headlineSmall = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+  );
 }

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:jolu_trip/widgets/detail-screen/map/map_components.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:jolu_trip/data/models/coordinates.model.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
-import 'package:jolu_trip/utils/map_utils.dart'; // Добавляем импорт MapUtils
+import 'package:jolu_trip/utils/map_utils.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class FullscreenMapScreen extends StatelessWidget {
   final Coordinates coordinates;
@@ -36,7 +36,7 @@ class FullscreenMapScreen extends StatelessWidget {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.map),
-            tooltip: "Выбрать карту",
+            tooltip: AppLocalizations.of(context)!.chooseMap,
             onSelected: (value) {
               if (value == 'google') {
                 _openInGoogleMaps();
@@ -93,7 +93,7 @@ class FullscreenMapScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showRouteOptions(context),
         icon: const Icon(Icons.directions_car),
-        label: const Text("Построить маршрут"),
+        label: Text(AppLocalizations.of(context)!.buildRoute),
         backgroundColor: AppColors.primary,
       ),
     );
@@ -116,7 +116,7 @@ class FullscreenMapScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Построить маршрут',
+              AppLocalizations.of(context)!.buildRoute,
               style: AppTextStyles.headlineMedium.copyWith(
                 color: isDark ? Colors.white : Colors.black,
               ),
@@ -153,7 +153,7 @@ class FullscreenMapScreen extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close),
-                label: const Text("Отмена"),
+                label: Text(AppLocalizations.of(context)!.cancel),
               ),
             ),
           ],
@@ -288,7 +288,7 @@ class FullscreenMapScreen extends StatelessWidget {
                   _showRouteOptions(context);
                 },
                 icon: const Icon(Icons.directions_car),
-                label: const Text("Построить маршрут"),
+                label: Text(AppLocalizations.of(context)!.buildRoute),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,

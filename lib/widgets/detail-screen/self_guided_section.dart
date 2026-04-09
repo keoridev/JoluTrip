@@ -3,6 +3,7 @@ import 'package:jolu_trip/data/models/location_model.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 import 'package:jolu_trip/widgets/detail-screen/map/coordinates_card.dart';
 import 'package:jolu_trip/widgets/detail-screen/map/location_map.dart';
 import 'package:jolu_trip/widgets/detail-screen/road_notes_list.dart';
@@ -35,7 +36,7 @@ class SelfGuidedSection extends StatelessWidget {
 
         // ── Карта ────────────────────────────────────────────────────
         LocationMap(
-          coordinates: location.coordinates!,
+          coordinates: location.coordinates,
           locationName: location.name,
           isDark: isDark,
         ),
@@ -43,7 +44,7 @@ class SelfGuidedSection extends StatelessWidget {
 
         // ── Координаты ───────────────────────────────────────────────
         CoordinatesCard(
-          coordinates: location.coordinates!,
+          coordinates: location.coordinates,
           isDark: isDark,
           cardColor: cardColor,
           textPrimary: textPrimary,
@@ -82,6 +83,8 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Row(
       children: [
         Container(
@@ -102,7 +105,7 @@ class _SectionHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "КАК ДОБРАТЬСЯ",
+              l10n.howToGet.toUpperCase(),
               style: AppTextStyles.featureLabel.copyWith(
                 color: AppColors.primary,
                 letterSpacing: 1.4,

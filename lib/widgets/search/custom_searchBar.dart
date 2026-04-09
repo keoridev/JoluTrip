@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
-import 'package:jolu_trip/constants/app_colors.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class CustomSearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -14,6 +14,7 @@ class CustomSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
@@ -39,7 +40,7 @@ class CustomSearchBar extends StatelessWidget {
             color: isDark ? Colors.white : Colors.black,
           ),
           decoration: InputDecoration(
-            hintText: 'Поиск мест...',
+            hintText: l10n.searchPlaces,
             hintStyle: TextStyle(
               color: isDark ? Colors.grey[500] : Colors.grey[600],
             ),

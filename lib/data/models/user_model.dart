@@ -25,7 +25,9 @@ class UserModel {
         displayName: user.displayName,
         phoneNumber: user.phoneNumber,
         photoURL: user.photoURL,
-        provider: user.providerData.first?.providerId);
+        provider: user.providerData.isNotEmpty
+            ? user.providerData.first.providerId
+            : null);
   }
 
   Map<String, dynamic> toMap() {

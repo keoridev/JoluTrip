@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/location_model.dart';
 import 'package:jolu_trip/data/models/guides_model.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 import 'package:jolu_trip/widgets/detail-screen/mode_button.dart';
 import 'package:jolu_trip/widgets/detail-screen/self_guided_section.dart';
 import 'package:jolu_trip/widgets/guide/guide_card_widget.dart';
@@ -35,11 +36,12 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Как поедем?",
+          l10n.howWillWeGo,
           style: AppTextStyles.headlineMedium.copyWith(
             color: widget.textPrimary,
           ),
@@ -60,7 +62,7 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
               Expanded(
                 child: ModeButton(
                   isSelected: _isWithGuide,
-                  label: "С гидом",
+                  label: l10n.withGuide,
                   icon: Icons.person_outline,
                   isDark: widget.isDark,
                   onTap: () => setState(() => _isWithGuide = true),
@@ -70,7 +72,7 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
               Expanded(
                 child: ModeButton(
                   isSelected: !_isWithGuide,
-                  label: "Самостоятельно",
+                  label: l10n.selfGuided,
                   icon: Icons.directions_car_outlined,
                   isDark: widget.isDark,
                   onTap: () => setState(() => _isWithGuide = false),
@@ -99,12 +101,14 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
   }
 
   Widget _buildGuidesSection() {
+    final l10n = AppLocalizations.of(context)!;
+
     if (widget.guides.isNotEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Доступные гиды",
+            l10n.availableGuides,
             style: AppTextStyles.headlineMedium.copyWith(
               color: widget.textPrimary,
             ),
@@ -155,7 +159,7 @@ class _TravelModeSelectorState extends State<TravelModeSelector> {
           ),
           const SizedBox(height: AppDimens.spaceS),
           Text(
-            "Временно нет доступных гидов",
+            l10n.temporarilyNoGuidesAvailable,
             style: AppTextStyles.bodyMedium.copyWith(
               color: widget.textSecondary,
             ),

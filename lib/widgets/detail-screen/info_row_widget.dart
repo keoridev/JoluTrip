@@ -4,6 +4,7 @@ import 'package:jolu_trip/utils/video_helpers.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class InfoRowWidget extends StatelessWidget {
   final LocationModel location;
@@ -34,7 +35,7 @@ class InfoRowWidget extends StatelessWidget {
           _buildBentoItem(
             Icons.access_time_rounded,
             "${location.travelTime} мин",
-            "Время в пути",
+            AppLocalizations.of(context)!.travelTime,
             textSecondary,
             borderColor,
             bgColor,
@@ -42,7 +43,7 @@ class InfoRowWidget extends StatelessWidget {
           _buildBentoItem(
             Icons.terrain_outlined,
             VideoHelpers.getDifficultyLabel(location.difficult),
-            "Сложность маршрута",
+            AppLocalizations.of(context)!.routeDifficulty,
             textSecondary,
             borderColor,
             bgColor,
@@ -51,8 +52,10 @@ class InfoRowWidget extends StatelessWidget {
             location.hasSignal
                 ? Icons.sensors_rounded
                 : Icons.sensors_off_rounded,
-            location.hasSignal ? "Доступна" : "Отсутствует",
-            "Мобильная связь",
+            location.hasSignal
+                ? AppLocalizations.of(context)!.available
+                : AppLocalizations.of(context)!.unavailable,
+            AppLocalizations.of(context)!.mobileSignal,
             textSecondary,
             borderColor,
             bgColor,
@@ -60,7 +63,7 @@ class InfoRowWidget extends StatelessWidget {
           _buildBentoItem(
             Icons.directions_car_outlined,
             location.carType,
-            "Тип авто",
+            AppLocalizations.of(context)!.carType,
             textSecondary,
             borderColor,
             bgColor,

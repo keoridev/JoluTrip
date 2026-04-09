@@ -1,11 +1,15 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
+import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 import 'package:jolu_trip/screens/detail_screen.dart';
 import 'package:jolu_trip/services/video_controller_service.dart';
-import 'package:jolu_trip/utils/video_helpers.dart';
+import 'package:jolu_trip/services/favorites_service.dart';
+import 'package:jolu_trip/widgets/auth/auth_popup.dart';
 
-class VideoOverlay extends StatelessWidget {
+class VideoOverlay extends StatefulWidget {
   final String id;
   final String title;
   final String category;
@@ -26,159 +30,147 @@ class VideoOverlay extends StatelessWidget {
   });
 
   @override
+  State<VideoOverlay> createState() => _VideoOverlayState();
+}
+
+class _VideoOverlayState extends State<VideoOverlay> {
+  final FavoritesService _favoritesService = FavoritesService();
+  bool _isFavorite = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFavoriteStatus();
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    if (!mounted) return;
+    final isFav = await _favoritesService.isFavorite(widget.id);
+    if (mounted) setState(() => _isFavorite = isFav);
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (!_favoritesService.isUserLoggedIn) {
+      _showAuthPopup();
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      if (_isFavorite) {
+        await _favoritesService.removeFromFavorites(widget.id);
+        _showSnackBar('Удалено из избранного');
+      } else {
+        await _favoritesService.addToFavorites(widget.id);
+        _showSnackBar('Добавлено в избранное');
+      }
+      if (mounted) setState(() => _isFavorite = !_isFavorite);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showAuthPopup() {
+    AuthPopup.show(
+      context: context,
+      onLogin: () => Navigator.pushNamed(context, '/auth')
+          .then((_) => _checkFavoriteStatus()),
+      onRegister: () =>
+          Navigator.pushNamed(context, '/auth', arguments: {'mode': 'register'})
+              .then((_) => _checkFavoriteStatus()),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned(
-          bottom: 200,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  _buildTopActionButton(
-                    icon: Icons.favorite_border_rounded,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$title добавлено в избранное'),
-                          behavior: SnackBarBehavior.floating,
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  _buildTopActionButton(
-                    icon: Icons.share_rounded,
-                    onTap: () {},
-                  ),
+        // 1. Градиент снизу для читаемости текста
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.6, 1.0],
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.8),
                 ],
+              ),
+            ),
+          ),
+        ),
+
+        Positioned(
+          right: AppDimens.spaceM,
+          bottom: 190,
+          child: Column(
+            children: [
+              _buildSideAction(
+                icon: _isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_outline_rounded,
+                label: AppLocalizations.of(context)!.like,
+                color: _isFavorite ? Colors.redAccent : Colors.white,
+                onTap: _toggleFavorite,
+                isLoading: _isLoading,
+              ),
+              const SizedBox(height: AppDimens.spaceL),
+              _buildSideAction(
+                icon: Icons.share_rounded,
+                label: AppLocalizations.of(context)!.share,
+                onTap: () => _showSnackBar('Функция скоро появится'),
               ),
             ],
           ),
         ),
+
+        // 3. Информационный блок снизу
         Positioned(
-          bottom: AppDimens.spaceL,
           left: AppDimens.spaceM,
           right: AppDimens.spaceM,
+          bottom: AppDimens.spaceL + MediaQuery.of(context).padding.bottom,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Категория
+              _buildCategoryBadge(),
+              const SizedBox(height: AppDimens.spaceS),
+
               // Название
               Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                widget.title,
+                style: AppTextStyles.headlineMedium.copyWith(
                   color: Colors.white,
-                  height: 1.1,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black45,
-                      blurRadius: 12,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+                  fontWeight: FontWeight.bold,
+                  shadows: [const Shadow(blurRadius: 8, color: Colors.black54)],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
 
-              const SizedBox(height: AppDimens.spaceS),
-
-              // Мета информация в одну строку
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(
-                    _getCategoryIcon(category),
-                    size: 14,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    category,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  _buildMetaDivider(),
-                  _buildMetaChip(
-                    icon: Icons.access_time_rounded,
-                    label: '$travelTime мин',
-                  ),
-                  _buildMetaDivider(),
-                  _buildMetaChip(
-                    icon: Icons.directions_car_outlined,
-                    label: carType,
-                  ),
-                ]),
-              ),
-
               const SizedBox(height: AppDimens.spaceM),
 
-              // Кнопка "Узнать больше" по центру снизу
-              Center(
-                child: Container(
-                  width: double.infinity,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(0.9),
-                        AppColors.primary.withOpacity(0.7),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(30),
-                      onTap: () {
-                        VideoControllerService().pauseCurrentVideo();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailsScreen(
-                              locationId: id.toString(),
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Center(
-                        child: Text(
-                          'Узнать больше',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              // Чипсы с деталями (Время, Машина)
+              Row(
+                children: [
+                  _buildDetailItem(Icons.access_time_filled_rounded,
+                      '${widget.travelTime} м'),
+                  const SizedBox(width: AppDimens.spaceS),
+                  _buildDetailItem(
+                      Icons.directions_car_filled_rounded, widget.carType),
+                  const SizedBox(width: AppDimens.spaceS),
+                  _buildDetailItem(Icons.speed_rounded, widget.difficult),
+                ],
               ),
+
+              const SizedBox(height: AppDimens.spaceL),
+
+              // Главная кнопка перехода
+              _buildMainButton(context),
             ],
           ),
         ),
@@ -186,81 +178,108 @@ class VideoOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildTopActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(30),
-        child: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.15),
-              width: 0.8,
-            ),
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetaChip({
+  Widget _buildSideAction({
     required IconData icon,
     required String label,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+    bool isLoading = false,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Icon(icon, color: color, size: 28),
           ),
         ),
+        const SizedBox(height: 4),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w500)),
       ],
     );
   }
 
-  Widget _buildMetaDivider() {
+  Widget _buildCategoryBadge() {
     return Container(
-      width: 1,
-      height: 14,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: Colors.white.withOpacity(0.2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(AppDimens.radiusS),
+      ),
+      child: Text(
+        widget.category.toUpperCase(),
+        style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1),
+      ),
     );
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'горы':
-        return Icons.terrain;
-      case 'озеро':
-      case 'озера':
-        return Icons.water;
-      case 'исторические':
-        return Icons.history_edu;
-      default:
-        return Icons.place;
-    }
+  Widget _buildDetailItem(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(AppDimens.radiusS),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.white70),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainButton(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: () {
+          VideoControllerService().pauseCurrentVideo();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => DetailsScreen(locationId: widget.id)),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimens.radiusL)),
+          elevation: 0,
+        ),
+        child: Text(l10n.learnMore,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 }

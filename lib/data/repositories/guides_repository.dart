@@ -10,8 +10,7 @@ class GuidesRepository {
       final doc = await _firestore.collection('guides').doc(guideId).get();
 
       if (doc.exists) {
-        return GuidesModel.fromFirestore(
-            doc.id, doc.data() as Map<String, dynamic>);
+        return GuidesModel.fromFirestore(doc.id, doc.data() ?? {});
       }
       return null;
     } catch (e) {
@@ -43,8 +42,7 @@ class GuidesRepository {
           .get();
 
       return querySnapshot.docs
-          .map((doc) => GuidesModel.fromFirestore(
-              doc.id, doc.data() as Map<String, dynamic>))
+          .map((doc) => GuidesModel.fromFirestore(doc.id, doc.data()))
           .toList();
     } catch (e) {
       debugPrint('Ошибка при получение гидов: $e');
@@ -60,8 +58,7 @@ class GuidesRepository {
           .get();
 
       return querySnapshot.docs
-          .map((doc) => GuidesModel.fromFirestore(
-              doc.id, doc.data() as Map<String, dynamic>))
+          .map((doc) => GuidesModel.fromFirestore(doc.id, doc.data()))
           .toList();
     } catch (e) {
       debugPrint('Ошибка при получение гидов: $e');
@@ -77,16 +74,14 @@ class GuidesRepository {
         .where(FieldPath.documentId, whereIn: guideIds)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => GuidesModel.fromFirestore(
-                doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => GuidesModel.fromFirestore(doc.id, doc.data()))
             .toList());
   }
 
   Stream<List<GuidesModel>> getAllGuides() {
     return _firestore.collection('guides').snapshots().map((snapshot) =>
         snapshot.docs
-            .map((doc) => GuidesModel.fromFirestore(
-                doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => GuidesModel.fromFirestore(doc.id, doc.data()))
             .toList());
   }
 }

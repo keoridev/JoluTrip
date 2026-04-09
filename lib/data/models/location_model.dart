@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/coordinates.model.dart';
+import 'package:jolu_trip/data/models/rest_points_model.dart';
 
 class LocationModel {
   final String id;
@@ -20,6 +20,7 @@ class LocationModel {
   final List<String> roadNotes;
   final Coordinates coordinates;
   final String peculiarity;
+  final List<RestPoint> restPoints;
 
   LocationModel({
     required this.id,
@@ -40,14 +41,10 @@ class LocationModel {
     required this.roadNotes,
     required this.coordinates,
     required this.peculiarity,
+    required this.restPoints,
   });
 
   factory LocationModel.fromFirestore(String docId, Map<String, dynamic> data) {
-    debugPrint('📍 Парсим документ: $docId');
-    debugPrint('📦 Данные: $data');
-
-    // Особенно важно для Конорчека:
-
     String asString(dynamic v, String defaultValue) {
       if (v == null) return defaultValue;
       return v.toString().isEmpty ? defaultValue : v.toString();
@@ -64,43 +61,35 @@ class LocationModel {
       if (v == null) return false;
       if (v is bool) return v;
       if (v is String) return v.toLowerCase() == 'true';
-      return true;
+      return false;
     }
 
     List<String> parseAvailableGuides(dynamic value) {
       if (value == null) return [];
       if (value is String) {
-        if (value.trim().isEmpty || value.toLowerCase() == 'нет гидов')
+        if (value.trim().isEmpty || value.toLowerCase() == 'нет гидов') {
           return [];
-
+        }
         return value
             .split(',')
             .map((e) => e.trim())
             .where((e) => e.isNotEmpty)
             .toList();
       }
-
       if (value is List) {
         return List<String>.from(
             value.whereType<String>().where((e) => e.isNotEmpty));
       }
-
       return [];
     }
 
-    String validateUrl(String url) {
+    String validateUrl(dynamic url) {
       if (url == null) return '';
-
-      // Просто обрезаем пробелы и возвращаем как есть
       String cleanUrl = url.toString().trim();
-
       if (cleanUrl.isEmpty) return '';
-
-      // Если нет протокола, добавляем https://
       if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
         cleanUrl = 'https://$cleanUrl';
       }
-
       return cleanUrl;
     }
 
@@ -108,9 +97,7 @@ class LocationModel {
       id: docId,
       name: asString(data['name'], 'Без названия'),
       description: asString(data['description'], 'Без описания'),
-      videoUrl: validateUrl(
-        data['video_url'],
-      ),
+      videoUrl: validateUrl(data['video_url']),
       price: asInt(data['price_per_car'], 8000),
       entryFee: asString(data['entry_fee'], '0'),
       carType: asString(data['car_type_required'], '4x4'),
@@ -125,6 +112,7 @@ class LocationModel {
       roadNotes: List<String>.from(data['road_notes'] ?? []),
       coordinates: Coordinates.fromList(data['coordinates'] ?? []),
       peculiarity: asString(data['peculiarity'], ''),
+      restPoints: RestPoint.fromList(data['rest_points']),
     );
   }
 }

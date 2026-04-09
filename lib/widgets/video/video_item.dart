@@ -10,6 +10,7 @@ import 'package:jolu_trip/widgets/video/video_overlay.dart';
 import 'package:jolu_trip/widgets/video/video_indicators.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class VideoItem extends StatefulWidget {
   final String id;
@@ -46,7 +47,7 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
 
   bool _isInitialized = false;
   bool _hasError = false;
-  bool _isPlaying = true;
+  bool _isPlaying = false;
   bool _showIcon = false;
   double _playbackSpeed = 1.0;
   bool _isSpeedIndicatorVisible = false;
@@ -220,7 +221,7 @@ class _VideoItemState extends State<VideoItem> with WidgetsBindingObserver {
               ),
               const SizedBox(height: AppDimens.spaceM),
               Text(
-                'Не удалось загрузить видео\n${widget.title}',
+                '${AppLocalizations.of(context)!.failedToLoadVideo}\n${widget.title}',
                 style: AppTextStyles.bodyLarge.copyWith(
                   color: AppColors.textSecondaryDark,
                 ),

@@ -3,6 +3,7 @@ import 'package:jolu_trip/data/models/location_model.dart';
 import 'package:jolu_trip/constants/app_dimens.dart';
 import 'package:jolu_trip/constants/app_colors.dart';
 import 'package:jolu_trip/constants/app_text_styles.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 
 class DescriptionSection extends StatelessWidget {
   final LocationModel location;
@@ -18,6 +19,7 @@ class DescriptionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,7 +35,7 @@ class DescriptionSection extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              "О месте",
+              l10n.aboutPlace,
               style: AppTextStyles.headlineMedium.copyWith(color: textPrimary),
             ),
           ],

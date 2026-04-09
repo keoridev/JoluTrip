@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jolu_trip/data/models/location_model.dart';
+import 'package:jolu_trip/l10n/app_localizations.dart';
 import 'package:jolu_trip/widgets/search/custom_searchBar.dart';
 import 'package:jolu_trip/widgets/search/location-card.dart';
 
@@ -20,18 +21,46 @@ class _SearchScreenState extends State<SearchScreen> {
   String _selectedCategory = 'Все';
   String _searchQuery = '';
 
-  final List<String> _categories = [
-    'Все',
-    'Горы',
-    'Озеро',
-    'Исторические',
-  ];
-
-  // Карта соответствий категорий (синонимы)
+  // Карта соответствий категорий (синонимы на русском, английском и кыргызском)
   final Map<String, List<String>> _categorySynonyms = {
-    'горы': ['горы', 'гора', 'горный'],
-    'озеро': ['озеро', 'озера', 'озёрный', 'озерный'],
-    'исторические': ['исторические', 'история', 'исторический', 'древний'],
+    // Горы / Mountains / Тоолор
+    'горы': [
+      'горы',
+      'гора',
+      'горный',
+      'mountain',
+      'mountains',
+      'mount',
+      'тоо',
+      'тоолор',
+      'тоосу'
+    ],
+    // Озеро / Lake / Көл
+    'озеро': [
+      'озеро',
+      'озера',
+      'озёрный',
+      'озерный',
+      'lake',
+      'lakes',
+      'көл',
+      'көлүн',
+      'көлдөр'
+    ],
+    // Исторические / Historical / Тарыхый
+    'исторические': [
+      'исторические',
+      'история',
+      'исторический',
+      'древний',
+      'historical',
+      'history',
+      'historic',
+      'тарыхый',
+      'тарых',
+      'тарыхы',
+      'башкы'
+    ],
   };
 
   @override
@@ -42,6 +71,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    final List<String> _categories = [
+      l10n.allCategory,
+      l10n.mountains,
+      l10n.lake,
+      l10n.historical,
+    ];
     return Scaffold(
       backgroundColor: AppColors.darkTheme.scaffoldBackgroundColor,
       body: SafeArea(
@@ -52,7 +89,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Row(
                 children: [
                   Text(
-                    'Поиск мест',
+                    l10n.searchPlaces,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -88,6 +125,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildResults() {
+    final l10n = AppLocalizations.of(context)!;
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('locations').snapshots(),
       builder: (context, snapshot) {
@@ -96,8 +135,8 @@ class _SearchScreenState extends State<SearchScreen> {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text('Нет доступных мест'),
+          return Center(
+            child: Text(l10n.noAvailablePlaces),
           );
         }
 
@@ -113,7 +152,7 @@ class _SearchScreenState extends State<SearchScreen> {
         }).toList();
 
         if (filteredLocations.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(l10n);
         }
 
         return GridView.builder(
@@ -130,7 +169,7 @@ class _SearchScreenState extends State<SearchScreen> {
             return LocationCard(
               location: location,
               onTap: () {
-                _navigateToVideo(context, location);
+                _navigateToVideo(context, location, l10n);
               },
             );
           },
@@ -139,53 +178,83 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // Улучшенная фильтрация по категории (с учетом синонимов)
+  // Улучшенная фильтрация по категории (с учетом синонимов на всех языках)
   bool _matchesCategory(LocationModel location) {
-    if (_selectedCategory == 'Все') return true;
+    final selectedLower = _selectedCategory.toLowerCase().trim();
+
+    // Проверка на "Все" / "All" / "Бүгүн"
+    if (selectedLower == 'все' ||
+        selectedLower == 'all' ||
+        selectedLower == 'бүгүн') {
+      return true;
+    }
 
     final locationCat = location.category.toLowerCase().trim();
-    final selectedCat = _selectedCategory.toLowerCase().trim();
 
-    if (locationCat == selectedCat) return true;
+    // Прямое совпадение
+    if (locationCat == selectedLower) return true;
 
+    // Проверка синонимов
     for (var entry in _categorySynonyms.entries) {
-      if (entry.key == selectedCat || entry.value.contains(selectedCat)) {
-        if (entry.value.contains(locationCat) ||
-            locationCat.contains(entry.key)) {
+      if (entry.key == selectedLower ||
+          entry.value.any((v) => v.toLowerCase() == selectedLower)) {
+        // Проверяем, содержит ли локация категорию из списка синонимов
+        if (entry.value.any((syn) =>
+            locationCat.contains(syn.toLowerCase()) ||
+            locationCat.toLowerCase().contains(syn.toLowerCase()))) {
+          return true;
+        }
+        // Проверяем подстроки
+        if (locationCat.contains(entry.key) ||
+            entry.key.contains(locationCat)) {
           return true;
         }
       }
     }
 
-    if (locationCat.contains(selectedCat) ||
-        selectedCat.contains(locationCat)) {
-      return true;
-    }
-
     return false;
   }
 
-  // Улучшенный поиск с учетом опечаток
+  // Улучшенный поиск с поддержкой многоязычности и опечаток
   bool _matchesSearch(LocationModel location) {
     if (_searchQuery.isEmpty) return true;
 
     final query = _searchQuery.toLowerCase().trim();
     final name = location.name.toLowerCase();
+    final description = location.description.toLowerCase();
 
-    // Точное совпадение
+    // Точное совпадение в названии
     if (name.contains(query)) {
       return true;
     }
 
+    // Точное совпадение в описании
+    if (description.contains(query)) {
+      return true;
+    }
+
+    // Проверка расстояния Левенштейна (допускаем опечатки)
     if (_levenshteinDistance(name, query) <= 2) {
       return true;
     }
 
+    // Поиск по словам (особенно полезно для многоязычного контента)
     final queryWords = query.split(' ');
     for (var word in queryWords) {
-      if (word.length < 3) continue; // Пропускаем короткие слова
+      if (word.isEmpty || word.length < 2) continue;
 
-      if (name.contains(word) || _levenshteinDistance(name, word) <= 1) {
+      // Проверка в названии
+      if (name.contains(word)) {
+        return true;
+      }
+
+      // Проверка в описании
+      if (description.contains(word)) {
+        return true;
+      }
+
+      // Проверка расстояния Левенштейна для каждого слова
+      if (_levenshteinDistance(name, word) <= 1) {
         return true;
       }
     }
@@ -219,7 +288,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return previous[s2.length];
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -233,7 +302,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Ничего не найдено',
+              l10n.nothingFound,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -242,7 +311,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Попробуйте изменить параметры поиска',
+              l10n.tryChangingSearch,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[500],
@@ -260,12 +329,12 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Вы искали:',
+                      l10n.youSearched,
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$_searchQuery',
+                      _searchQuery,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -282,11 +351,12 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _navigateToVideo(BuildContext context, LocationModel location) {
+  void _navigateToVideo(
+      BuildContext context, LocationModel location, AppLocalizations l10n) {
     if (location.videoUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Видео для этого места еще не добавлено'),
+          content: Text(l10n.videoNotAdded),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.red,
         ),

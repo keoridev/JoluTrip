@@ -91,15 +91,26 @@ class CategoryGrid extends StatelessWidget {
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Горы':
-        return Icons.terrain;
-      case 'Озеро':
-        return Icons.water;
-      case 'Исторические':
-        return Icons.history_edu;
-      default:
-        return Icons.explore;
-    }
+    final lowerCategory = category.toLowerCase();
+
+    // Русский
+    if (lowerCategory.contains('гор')) return Icons.terrain;
+    if (lowerCategory.contains('озер') || lowerCategory.contains('озёр'))
+      return Icons.water;
+    if (lowerCategory.contains('тарих') || lowerCategory.contains('истор'))
+      return Icons.history_edu;
+
+    // Английский
+    if (lowerCategory.contains('mountain') || lowerCategory.contains('mount'))
+      return Icons.terrain;
+    if (lowerCategory.contains('lake')) return Icons.water;
+    if (lowerCategory.contains('historic')) return Icons.history_edu;
+
+    // Кыргызский
+    if (lowerCategory.contains('тоо')) return Icons.terrain;
+    if (lowerCategory.contains('көл')) return Icons.water;
+    if (lowerCategory.contains('тарых')) return Icons.history_edu;
+
+    return Icons.explore;
   }
 }
